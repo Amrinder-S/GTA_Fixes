@@ -916,48 +916,6 @@ void __fastcall PreRender_AddSingleWheelParticles_FixDouble(CVehicle* _this, int
 	//3 = rear right
 	//5 = rear m left
 	//6 = rear m right
-	if (_this->m_pHandlingData->m_nModelFlags.m_bDoubleRwheels && (wheelId == 1 || wheelId == 3 || wheelId == 5 || wheelId == 6))
-	{
-		CColPoint *colPoint2 = new CColPoint(*colPoint);
-		float distance = 0.45f;
-
-		bool left = (wheelId == 3 || wheelId == 6);
-
-		if (MixSets::pVehFuncs_Ext_GetDoubleWheelOffset != NULL)
-		{
-			distance = (MixSets::pVehFuncs_Ext_GetDoubleWheelOffset)(_this, (int)left);
-		}
-
-		if (left)
-		{
-			distance *= -1.0f;
-		}
-
-		CVector pos1;
-		pos1.x = from->x;
-		pos1.y = from->y;
-		pos1.z = from->z;
-
-		CMatrixLink* matrix = _this->GetMatrix();
-
-		pos1.x = matrix->right.x * distance;
-		pos1.y = matrix->right.y * distance;
-		pos1.z = matrix->right.z * distance;
-
-		colPoint2->m_vecPoint.x = pos1.x;
-		colPoint2->m_vecPoint.y = pos1.y;
-		colPoint2->m_vecPoint.z = pos1.z;
-
-		pos1.x += from->x;
-		pos1.y += from->y;
-		pos1.z += from->z;
-
-		colPoint2->m_vecPoint.x += colPoint->m_vecPoint.x;
-		colPoint2->m_vecPoint.y += colPoint->m_vecPoint.y;
-		colPoint2->m_vecPoint.z += colPoint->m_vecPoint.z;
-
-		_this->AddSingleWheelParticles(wheelState, a3, a4, a5, colPoint2, &pos1, id, wheelId + 69696969, skidMarkType, _bloodState, flags);
-	}
 }
 
 void __declspec(naked) VehFlipDamage_ASM()

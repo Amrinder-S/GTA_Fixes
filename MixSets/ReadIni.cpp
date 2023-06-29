@@ -424,8 +424,7 @@ void MixSets::ReadIni_BeforeFirstFrame()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-void MixSets::ReadIni()
-{
+void MixSets::ReadIni() {
 	if (!bEnabled) return;
 
 	int i;
@@ -677,17 +676,6 @@ void MixSets::ReadIni()
 		WriteMemory<float*>(0x72ACF5 + 2, &G_RainGroundSplashArea_HALF, true);
 	}
 
-	if (ReadIniBool(ini, &lg, "Graphics", "NoRainSteam")) {
-		MakeNOP(0x72ADF0, 37, true);
-	}
-
-	if (ReadIniBool(ini, &lg, "Graphics", "NoSandstormSteam")) {
-		MakeNOP(0x72AAE0, 5, true);
-	}
-
-	if (ReadIniBool(ini, &lg, "Graphics", "NoRainNoise")) {
-		MakeNOP(0x705078, 5, true);
-	}
 
 	if (ReadIniBool(ini, &lg, "Graphics", "NoPointLights")) {
 		WriteMemory<uint8_t>(0x7000E0, 0xC3, true);
@@ -877,10 +865,6 @@ void MixSets::ReadIni()
 		WriteMemory<uint8_t>(0x8D518C, 0, false);
 	}
 
-	if (ReadIniBool(ini, &lg, "Graphics", "NoRainStreaks")) {
-		MakeNOP(0x53E126, 5, true);
-	}
-
 	if (!inSAMP && ReadIniBool(ini, &lg, "Graphics", "NoCopHeliLight")) {
 		WriteMemory<uint8_t>(0x006C712A, 0, true);
 	}
@@ -941,11 +925,6 @@ void MixSets::ReadIni()
 		WriteMemory<uint8_t>(0x440D6D, 0xE9, true);
 		WriteMemory<uint32_t>(0x440D6E, 0x200, true);
 	}
-
-	if (ReadIniBool(ini, &lg, "Graphics", "HideWeaponsOnVehicle")) {
-		G_HideWeaponsOnVehicle = true;
-	}
-	else G_HideWeaponsOnVehicle = false;
 
 
 	if (ReadIniFloat(ini, &lg, "Graphics", "ShadowsHeight", &f)) {
@@ -1017,23 +996,6 @@ void MixSets::ReadIni()
 
 	// -- Gameplay
 
-	if ((!inSAMP || (inSAMP && rpSAMP)) && ReadIniBool(ini, &lg, "Gameplay", "ScrollReloadFix")) {
-		MakeNOP(0x60B4FA, 6, true);
-	}
-
-	if ((!inSAMP || (inSAMP && rpSAMP)) && ReadIniBool(ini, &lg, "Gameplay", "VehBurnEngineBroke")) {
-		injector::MakeInline<0x006A70ED, 0x006A70F3>([](injector::reg_pack& regs) {
-			auto vehicle = (CVehicle*)regs.esi;
-			vehicle->m_nVehicleFlags.bEngineOn = false;
-			regs.eax = *(DWORD*)(regs.esi + 0x57C); //original code
-		});
-
-		injector::MakeInline<0x006A75F9, 0x006A75FF>([](injector::reg_pack& regs) {
-			auto vehicle = (CVehicle*)regs.esi;
-			if (vehicle->m_fHealth > 0.0f) vehicle->m_nVehicleFlags.bEngineOn = true;
-			*(DWORD*)(regs.esi + 0x57C) = regs.edi; //original code
-		});
-	}
 
 	G_ParaLandingFix = false;
 	G_NoGarageRadioChange = false;
@@ -1076,100 +1038,13 @@ void MixSets::ReadIni()
 			WriteMemory<float>(0x8703D8, f, false);
 		}
 
-		if (ReadIniFloat(ini, &lg, "Gameplay", "BikePedImpact", &f)) {
-			G_BikePedImpact = f;
-			Default_BikePedImpact = ReadMemory<float>(0x8D22AC, false);
-			injector::MakeInline<0x5F1200, 0x5F1200 + 6>([](injector::reg_pack& regs)
-			{
-				if (G_BikePedImpact != -1.0)
-					asm_fmul(G_BikePedImpact);
-				else
-					asm_fmul(Default_BikePedImpact);
-			});
-		}
 
-		if (ReadIniFloat(ini, &lg, "Gameplay", "CarPedImpact", &f)) {
-			G_CarPedImpact = f;
-			Default_CarPedImpact = ReadMemory<float>(0x8D22A8, false);
-			injector::MakeInline<0x5F1208, 0x5F1208 + 6>([](injector::reg_pack& regs)
-			{
-				if (G_CarPedImpact != -1.0)
-					asm_fmul(G_CarPedImpact);
-				else
-					asm_fmul(Default_CarPedImpact);
-			});
-		}
-
-		if (ReadIniFloat(ini, &lg, "Gameplay", "VehPedImpactUpForce", &f)) {
-			WriteMemory<float>(0x8D22A4, f, false);
-		}
-
-		ReadIniFloat(ini, &lg, "Gameplay", "VehExploDamage", &G_VehExploDamage);
-		ReadIniFloat(ini, &lg, "Gameplay", "VehBulletDamage", &G_VehBulletDamage);
-
-		if (G_VehBulletDamage != 1.0 || G_VehExploDamage != 1.0 || G_VehBulletDamage != -1.0 || G_VehExploDamage != -1.0) {
-			injector::MakeInline<0x6D7FDA, 0x6D7FDA + 6>([](injector::reg_pack& regs)
-			{
-				regs.eax = *(uint32_t*)(regs.esi + 0x594); // mov     eax, [esi+594h]
-
-				CVehicle* vehicle = (CVehicle*)regs.esi;
-				if (!vehicle->m_nVehicleFlags.bIsRCVehicle && !(vehicle->m_pDriver && vehicle->m_pDriver->m_nCreatedBy == 2 && vehicle->m_nCreatedBy == eVehicleCreatedBy::MISSION_VEHICLE)) {
-					if (regs.ebx == 51 || regs.ebx == 37) { // explosion or fire
-						if (G_VehExploDamage != -1.0) { // check it because the var may be updated by ini reloading
-							if (regs.ebx == 51) {
-								*(float*)(regs.esp + 0x90) *= G_VehExploDamage;
-							}
-						}
-					}
-					else {
-						if (G_VehBulletDamage != -1.0) {
-							float thisDamage = *(float*)(regs.esp + 0x90);
-
-							// For petrol cap (not 100% but this way we don't need to do another hook).
-							if (thisDamage != vehicle->m_fHealth && thisDamage != 1000.0f) {
-								*(float*)(regs.esp + 0x90) *= G_VehBulletDamage;
-							}
-						}
-					}
-				}
-			});
-		}
-
-		if (ReadIniFloat(ini, &lg, "Gameplay", "VehFireDamage", &f)) {
-			G_VehFireDamage = f;
-			WriteMemory<float*>(0x53A6B7 + 2, &G_VehFireDamage, true);
-		}
 
 		if (ReadIniBool(ini, &lg, "Gameplay", "NoTutorials")) {
 			WriteMemory<uint8_t>(0xC0BC15, 1, true);
 			G_NoTutorials = true;
 		}
 		else G_NoTutorials = false;
-	}
-
-	if (ReadIniFloat(ini, &lg, "Gameplay", "BrakePower", &f)) {
-		if (!inSAMP || f < 1.0f) {
-			G_BrakePower = f;
-			if (!inSAMP && ReadIniFloat(ini, &lg, "Gameplay", "BrakeMin", &f)) {
-				G_BrakeMin = f / 100.0f;
-			}
-			else {
-				G_BrakeMin = -1.0f;
-			}
-			injector::MakeInline<0x6B269F, 0x6B269F + 6>([](injector::reg_pack& regs)
-			{
-				//fmul[eax + tHandlingData.fBrakeDeceleration]
-				float brakeDeceleration = *(float*)(regs.eax + 0x94);
-				brakeDeceleration *= G_BrakePower;
-				if (G_BrakeMin > 0.0 && brakeDeceleration < G_BrakeMin) brakeDeceleration = G_BrakeMin;
-				G_f = brakeDeceleration;
-				asm_fmul(brakeDeceleration);
-			});
-		}
-	}
-
-	if (ReadIniBool(ini, &lg, "Gameplay", "NoSteerSpeedLimit")) {
-		WriteMemory<uint8_t>(0x6B2A15, 0xEB, true);
 	}
 
 	if (ReadIniBool(ini, &lg, "Gameplay", "NoFixHandsToBars")) {
@@ -1203,37 +1078,6 @@ void MixSets::ReadIni()
 	if (ReadIniBool(ini, &lg, "Gameplay", "NoWheelTurnBack")) {
 		MakeNOP(0x6B5579, 6, true);
 		MakeNOP(0x6B568A, 6, true);
-	}
-
-	if (ReadIniFloat(ini, &lg, "Gameplay", "WheelTurnSpeed", &f)) {
-		if (inSAMP && f > 0.2f) f = 0.2f;
-		WriteMemory<float>(0x871058, f, false);
-	}
-
-	if (ReadIniFloat(ini, &lg, "Gameplay", "HeliSensibility", &f)) {
-		if (inSAMP && f > 0.00392f) f = 0.00392f;
-		G_HeliSensibility = f;
-		WriteMemory<float*>(0x6C4867 + 2, &G_HeliSensibility, true);
-	}
-
-	if (!inSAMP && ReadIniBool(ini, &lg, "Gameplay", "VehFlipDontBurn")) {
-		ReadIniFloat(ini, &lg, "Gameplay", "VehFlipDamage", &f);
-		if (f > 0.0f) {
-			G_VehFlipDamage = f / 8.0f;
-			MakeCALL(0x006A776B, VehFlipDamage_ASM);
-			MakeCALL(0x00570E7F, VehFlipDamage_Player_ASM);
-			MakeNOP(0x006A7770);
-			MakeNOP(0x00570E84);
-		}
-		else {
-			// Patch ped vehicles damage when flipped
-			WriteMemory<uint16_t>(0x6A776B, 0xD8DD, true); // fstp st0
-			MakeNOP(0x6A776D, 4, true);
-
-			// Patch player vehicle damage when flipped
-			WriteMemory<uint16_t>(0x570E7F, 0xD8DD, true); // fstp st0
-			MakeNOP(0x570E81, 4, true);
-		}
 	}
 
 	if (ReadIniBool(ini, &lg, "Gameplay", "EnableTrainCams")) {
@@ -1304,7 +1148,7 @@ void MixSets::ReadIni()
 			WriteMemory<float*>(0x00511DE4, &_flt_2_4, true);
 			WriteMemory<float*>(0x0052227F, &_flt_2_4, true);
 			WriteMemory<float*>(0x0050F022, &_flt_2_4, true);
-			if (ReadMemory<float*>(0x50F048, true) == &CCamera::m_fMouseAccelHorzntl)
+			if (ReadMemory<float*>(0x50F048, true) == &CCamera::m_fMouseAccelHorzntal)
 			{
 				WriteMemory<float*>(0x0050F048, &CCamera::m_fMouseAccelVertical, true);
 				WriteMemory<float*>(0x0050FB28, &CCamera::m_fMouseAccelVertical, true);
@@ -1320,14 +1164,14 @@ void MixSets::ReadIni()
 			WriteMemory<uint16_t>(0x005BC7BC, 0x0, true);
 
 			float hor = 0.0003125f + 0.0003125f / 2.0f;
-			while (hor <= CCamera::m_fMouseAccelHorzntl)
+			while (hor <= CCamera::m_fMouseAccelHorzntal)
 			{
 				hor += (0.005f / 16.0f);
 			}
 			hor -= 0.0003125f / 2.0f;
-			if (hor != CCamera::m_fMouseAccelHorzntl)
+			if (hor != CCamera::m_fMouseAccelHorzntal)
 			{
-				CCamera::m_fMouseAccelHorzntl = hor;
+				CCamera::m_fMouseAccelHorzntal = hor;
 				FrontEndMenuManager.SaveSettings();
 			}
 			hor *= (0.0015f / 0.0025f);
@@ -1496,28 +1340,6 @@ void MixSets::ReadIni()
 		WriteMemory<float*>(0x6C4EFE + 2, &G_HeliRotorSpeed, true);
 	}
 
-	if (!inSAMP && ReadIniInt(ini, &lg, "Gameplay", "SniperBulletLife", &i)) {
-		WriteMemory<uint32_t>(0x7360A2, i, true); //1000
-		WriteMemory<uint32_t>(0x73AFB3, (uint32_t)(i * 0.75f), true); //750
-		WriteMemory<uint32_t>(0x726CE2, (uint32_t)(i * 0.3f), true); //300
-	}
-
-	if (!inSAMP && ReadIniInt(ini, &lg, "Gameplay", "RocketLife", &i)) {
-		WriteMemory<uint32_t>(0x738091 + 2, i, true);
-	}
-
-	if (!inSAMP && ReadIniInt(ini, &lg, "Gameplay", "HSRocketLife", &i)) {
-		WriteMemory<uint32_t>(0x7380AA + 1, i, true);
-	}
-
-	if (!inSAMP && ReadIniFloat(ini, &lg, "Gameplay", "HSRocketSpeed", &f)) {
-		WriteMemory<float>(0x7380B3 + 4, f, true);
-	}
-
-	if (!inSAMP && ReadIniFloat(ini, &lg, "Gameplay", "RocketSpeed", &f)) {
-		WriteMemory<float>(0x73809B + 4, f, true);
-	}
-
 	if (ReadIniBool(ini, &lg, "Gameplay", "NoPedVehDive")) {
 		WriteMemory<uint32_t>(0x4C1197, 0xFFFF10E9, true);
 		WriteMemory<uint8_t>(0x4C119B, 0xFF, true);
@@ -1543,7 +1365,7 @@ void MixSets::ReadIni()
 		injector::MakeInline<0x692653>([](injector::reg_pack& regs)
 		{
 			CWeaponInfo* weaponInfo = (CWeaponInfo*)regs.eax;
-			if (weaponInfo->m_dwAnimGroup != 29 && weaponInfo->m_dwAnimGroup != 30) {
+			if (weaponInfo->m_nAnimToPlay != 29 && weaponInfo->m_nAnimToPlay != 30) {
 				*(uintptr_t*)(regs.esp - 0x4) = 0x69267B;
 			}
 			else {
@@ -1615,11 +1437,6 @@ void MixSets::ReadIni()
 		if (ReadIniFloat(ini, &lg, "Densities", "VehMultiPassDist", &f)) {
 			G_VehMultiPassDist = f;
 			WriteMemory<float*>(0x73290A + 2, &G_VehMultiPassDist, true);
-		}
-
-		if ((!inSAMP || (inSAMP && dtSAMP)) && ReadIniFloat(ini, &lg, "Densities", "PedDrawDist", &f)) {
-			G_PedDrawDist = f;
-			WriteMemory<float*>(0x73295C + 2, &G_PedDrawDist, true);
 		}
 
 		if (!inSAMP) {
@@ -2078,66 +1895,9 @@ void MixSets::ReadIni()
 
 
 		// -- Hydra
-		if (ReadIniInt(ini, &lg, "Hydra", "HydraRocketDelay", &i)) {
-			WriteMemory<uint32_t>(0x6D462E, i, true);
-			WriteMemory<uint32_t>(0x6D4634, i, true);
-		}
-		if (ReadIniInt(ini, &lg, "Hydra", "HydraFlareDelay", &i)) {
-			WriteMemory<uint32_t>(0x6E351B, i, true);
-		}
-		if (ReadIniInt(ini, &lg, "Hydra", "HydraLockDelay", &i)) {
-			WriteMemory<uint32_t>(0x6E363A, i, true);
-			WriteMemory<uint32_t>(0x6E36FB, i, true);
-		}
-		if (ReadIniBool(ini, &lg, "Hydra", "NoHydraSpeedLimit")) {
-			WriteMemory<uint8_t>(0x6DADE8, 0xEB, true);
-		}
-
-		// -- Rhino
-		if (ReadIniInt(ini, &lg, "Rhino", "RhinoFireDelay", &i)) {
-			WriteMemory<uint32_t>(0x6AED10, i, true);
-		}
-		if (ReadIniFloat(ini, &lg, "Rhino", "RhinoFirePush", &f)) {
-			f *= -1.0;
-			WriteMemory<float>(0x871080, f, true);
-		}
-		if (ReadIniFloat(ini, &lg, "Rhino", "RhinoFireRange", &f)) {
-			G_RhinoFireRange = f;
-			WriteMemory<float*>(0x6AEF42, &G_RhinoFireRange, true);
-			WriteMemory<float*>(0x6AEF56, &G_RhinoFireRange, true);
-			WriteMemory<float*>(0x6AEF65, &G_RhinoFireRange, true);
-		}
-		if (ReadIniInt(ini, &lg, "Rhino", "RhinoFireType", &i)) {
-			WriteMemory<uint8_t>(0x6AF0AC, i, true);
-		}
 
 
 		// -- World
-		if (ReadIniBool(ini, &lg, "World", "LockHour")) {
-			MakeNOP(0x53BFBD, 5, true);
-		}
-
-		if (ReadIniFloat(ini, &lg, "World", "Gravity", &f)) {
-			WriteMemory<float>(0x863984, f, false);
-		}
-
-		if (ReadIniInt(ini, &lg, "World", "FreezeWeather", &i)) {
-			G_FreezeWeather = i;
-		}
-		else {
-			if (G_FreezeWeather >= 0) {
-				CWeather::ReleaseWeather();
-			}
-			G_FreezeWeather = -1;
-		}
-
-		if (ReadIniBool(ini, &lg, "World", "NoWaterPhysics")) {
-			WriteMemory<uint8_t>(0x6C2759, 1, true);
-		}
-	}
-	else {
-		G_FreezeWeather = -1;
-	}
 
 	// -- Post
 
@@ -2174,4 +1934,5 @@ void MixSets::ReadIni()
 	}
 
 	lg.flush();
+	}
 }

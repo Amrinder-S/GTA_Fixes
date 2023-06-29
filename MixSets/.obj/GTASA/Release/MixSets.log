@@ -1,0 +1,9 @@
+﻿C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\Microsoft.CppBuild.targets(517,5): warning MSB8004: Output Directory does not end with a trailing slash.  This build instance will add the slash as it is required to allow proper evaluation of the Output Directory.
+  ReadIni.cpp
+H:\oldFiles\GTA_SA_PROJECTS\SA-MixSets\MixSets\ReadIni.cpp(356,46): warning C4244: '=': conversion from 'float' to 'uint32_t', possible loss of data
+H:\oldFiles\GTA_SA_PROJECTS\SA-MixSets\MixSets\ReadIni.cpp(365,46): warning C4244: '=': conversion from 'float' to 'uint32_t', possible loss of data
+H:\oldFiles\GTA_SA_PROJECTS\SA-MixSets\MixSets\ReadIni.cpp(390,8): warning C4244: '*=': conversion from 'float' to 'int', possible loss of data
+H:\oldFiles\GTA_SA_PROJECTS\SA-MixSets\MixSets\ReadIni.cpp(833,8): warning C4244: '*=': conversion from 'float' to 'int', possible loss of data
+  Generating code
+  Finished generating code
+  MixSets.vcxproj -> C:\Users\AMR\Desktop\GTA San Andreas\GTA_Fixes_By_AMR.asi
